@@ -10,6 +10,7 @@ let hasAnswered = false;
 let currentMode = "CLASSIC";
 let currentLives = 3;
 let allowAnswerChange = true;
+let currentQuestionId = null;
 
 // DOM Elements
 const screens = {
@@ -141,15 +142,23 @@ async function handleJoin(event) {
 }
 
 function leaveRoom() {
-    if (confirm("Do you want to leave this quiz room?")) {
-        localStorage.clear();
-        currentQuizId = null;
-        currentParticipantId = null;
-        sessionToken = null;
-        if (ws) ws.close();
-        document.getElementById('btn-leave-room').classList.add('hidden');
-        showScreen('join');
+    localStorage.clear();
+    currentQuizId = null;
+    currentParticipantId = null;
+    sessionToken = null;
+    currentQuestionId = null;
+    hasAnswered = false;
+    selectedOption = null;
+    if (ws) {
+        try { ws.close(); } catch(e) {}
+        ws = null;
     }
+    if (window.soundEngine) {
+        window.soundEngine.stopBgMusic();
+    }
+    const btnLeave = document.getElementById('btn-leave-room');
+    if (btnLeave) btnLeave.classList.add('hidden');
+    showScreen('join');
 }
 
 function initWebSocket() {
@@ -197,13 +206,18 @@ function updateLivesDisplay(lives) {
 }
 
 function togglePlayerSound() {
-    if (!window.soundEngine) return;
-    const isMuted = window.soundEngine.toggleMute();
-    const btn = document.getElementById('btn-sound-toggle');
-    if (btn) {
-        btn.innerText = isMuted ? '🔇' : '🔊';
-        if (isMuted) btn.classList.add('muted');
-        else btn.classList.remove('muted');
+    if (!window.soundEngine && typeof QuizSoundEngine !== 'undefined') {
+        window.soundEngine = new QuizSoundEngine();
+    }
+    if (window.soundEngine) {
+        window.soundEngine.ensureContext();
+        const isMuted = window.soundEngine.toggleMute();
+        const btn = document.getElementById('btn-sound-toggle');
+        if (btn) {
+            btn.innerText = isMuted ? '🔇' : '🔊';
+            if (isMuted) btn.classList.add('muted');
+            else btn.classList.remove('muted');
+        }
     }
 }
 
@@ -233,12 +247,22 @@ function handleServerEvent(data) {
         showScreen('lobby');
     }
     else if (type === "QUESTION_ACTIVE") {
-        hasAnswered = false;
-        selectedOption = null;
+        const qId = (data.question && data.question.id) ? data.question.id : (data.current_index || "q1");
+        const isNewQuestion = (currentQuestionId !== qId);
+
+        if (isNewQuestion) {
+            currentQuestionId = qId;
+            hasAnswered = false;
+            selectedOption = null;
+            const statusMsg = document.getElementById('answer-status-msg');
+            if (statusMsg) statusMsg.classList.add('hidden');
+            const lockOverlay = document.getElementById('buzz-lock-overlay');
+            if (lockOverlay) lockOverlay.classList.add('hidden');
+            const scBanner = document.getElementById('second-chance-banner');
+            if (scBanner) scBanner.classList.add('hidden');
+        }
+
         allowAnswerChange = (data.allow_answer_change !== undefined) ? data.allow_answer_change : true;
-        document.getElementById('answer-status-msg').classList.add('hidden');
-        document.getElementById('buzz-lock-overlay').classList.add('hidden');
-        document.getElementById('second-chance-banner').classList.add('hidden');
 
         if (data.mode) {
             currentMode = data.mode;
@@ -257,7 +281,13 @@ function handleServerEvent(data) {
             document.getElementById('buzz-timer').innerText = `⏱️ ${data.timer}s`;
             showScreen('buzzer');
         } else {
-            renderQuestion(data);
+            if (isNewQuestion) {
+                renderQuestion(data);
+            } else {
+                // Update timer without rebuilding DOM and losing selection
+                const timerPills = document.querySelectorAll('.timer-pill');
+                timerPills.forEach(pill => pill.innerText = `⏱️ ${data.timer || 0}s`);
+            }
             showScreen('question');
         }
     }
@@ -438,7 +468,14 @@ async function selectOption(letter, btnElement) {
         }
         b.classList.remove('selected');
     });
-    btnElement.classList.add('selected');
+    if (btnElement) {
+        btnElement.classList.add('selected');
+    }
+
+    if (window.soundEngine) {
+        window.soundEngine.ensureContext();
+        window.soundEngine.playBuzzClick();
+    }
 
     const statusMsg = document.getElementById('answer-status-msg');
     if (statusMsg) {
