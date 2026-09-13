@@ -121,9 +121,8 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if not st.session_state["authenticated"]:
-    api_url = os.getenv("API_BASE_URL", "http://localhost:8000").strip().rstrip("/")
-    if not api_url.startswith("http://") and not api_url.startswith("https://"):
-        api_url = "https://" + api_url
+    from services.network_utils import normalize_cloud_url
+    api_url = normalize_cloud_url(os.getenv("API_BASE_URL", "http://localhost:8000"))
     render_login_page(api_url)
     st.stop()
 

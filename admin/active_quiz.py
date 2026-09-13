@@ -7,12 +7,10 @@ from database.database import SessionLocal
 from database.repositories import get_all_quizzes, get_quiz_by_id, get_quiz_participants, get_quiz_leaderboard
 from qr.generator import generate_qr_code_base64, generate_qr_code_bytes
 from services.participant_service import generate_demo_participants
-from services.network_utils import get_local_ip
+from services.network_utils import get_local_ip, normalize_cloud_url
 import os
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").strip().rstrip("/")
-if not API_BASE_URL.startswith("http://") and not API_BASE_URL.startswith("https://"):
-    API_BASE_URL = "https://" + API_BASE_URL
+API_BASE_URL = normalize_cloud_url(os.getenv("API_BASE_URL", "http://localhost:8000"))
 
 def render_active_quiz():
     st.title("Active Quiz Live Control Dashboard")

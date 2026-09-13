@@ -3,12 +3,10 @@ import streamlit.components.v1 as components
 import requests
 from database.database import SessionLocal
 from database.repositories import get_all_quizzes, get_quiz_by_id
-from services.network_utils import get_local_ip
+from services.network_utils import get_local_ip, normalize_cloud_url
 import os
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").strip().rstrip("/")
-if not API_BASE_URL.startswith("http://") and not API_BASE_URL.startswith("https://"):
-    API_BASE_URL = "https://" + API_BASE_URL
+API_BASE_URL = normalize_cloud_url(os.getenv("API_BASE_URL", "http://localhost:8000"))
 
 def render_live_screen():
     db = SessionLocal()
