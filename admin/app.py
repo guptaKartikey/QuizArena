@@ -2,9 +2,12 @@ import streamlit as st
 import os
 import sys
 import pandas as pd
+from pathlib import Path
 
-# Add project root to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Add project root to sys.path — works on Render + Windows
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 from admin.auth_ui import render_login_page
 from admin.dashboard import render_dashboard

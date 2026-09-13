@@ -30,9 +30,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files and templates
-player_static_dir = os.path.join(os.path.dirname(__file__), "..", "player", "static")
-player_template_dir = os.path.join(os.path.dirname(__file__), "..", "player", "templates")
+from pathlib import Path
+
+# Robust absolute paths — works on Render, Windows, Linux
+_BASE_DIR = Path(__file__).resolve().parent.parent   # repo root
+player_static_dir = str(_BASE_DIR / "player" / "static")
+player_template_dir = str(_BASE_DIR / "player" / "templates")
 
 os.makedirs(player_static_dir, exist_ok=True)
 os.makedirs(player_template_dir, exist_ok=True)
