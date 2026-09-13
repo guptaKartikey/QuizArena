@@ -49,13 +49,13 @@
                     
                     <div id="quiz-info-box" class="info-box hidden">
                         <h3 id="info-quiz-name">General Knowledge</h3>
-                        <p>Code: <strong id="info-quiz-code">{{ join_code }}</strong></p>
+                        <p>Code: <strong id="info-quiz-code"></strong></p>
                     </div>
 
                     <form id="form-join" onsubmit="handleJoin(event)">
                         <div class="form-group">
                             <label for="input-code">Join Code *</label>
-                            <input type="text" id="input-code" value="{{ join_code }}" placeholder="e.g. X7K29" required maxlength="10" style="text-transform:uppercase;">
+                            <input type="text" id="input-code" value="" placeholder="e.g. X7K29" required maxlength="10" style="text-transform:uppercase;">
                         </div>
 
                         <div class="form-group">

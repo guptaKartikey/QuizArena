@@ -1,11 +1,11 @@
 import os
 import json
 import logging
+from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 
 from database.database import init_db, get_db
 from backend.api_routes import router as api_router
@@ -30,29 +30,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from pathlib import Path
-
 # Robust absolute paths — works on Render, Windows, Linux
 _BASE_DIR = Path(__file__).resolve().parent.parent   # repo root
 player_static_dir = str(_BASE_DIR / "player" / "static")
-player_template_dir = str(_BASE_DIR / "player" / "templates")
+_PLAYER_HTML = str(_BASE_DIR / "player" / "templates" / "player.html")
+
+logger.info(f"Static dir: {player_static_dir}")
+logger.info(f"Player HTML: {_PLAYER_HTML}")
+logger.info(f"player.html exists: {Path(_PLAYER_HTML).exists()}")
 
 os.makedirs(player_static_dir, exist_ok=True)
-os.makedirs(player_template_dir, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=player_static_dir), name="static")
-templates = Jinja2Templates(directory=player_template_dir)
 
 # Register REST routes
 app.include_router(api_router)
 
 @app.get("/", response_class=HTMLResponse)
-def index_page(request: Request):
-    return templates.TemplateResponse("player.html", {"request": request, "join_code": ""})
+def index_page():
+    return FileResponse(_PLAYER_HTML, media_type="text/html")
 
 @app.get("/join/{join_code}", response_class=HTMLResponse)
-def join_page(request: Request, join_code: str):
-    return templates.TemplateResponse("player.html", {"request": request, "join_code": join_code.upper()})
+def join_page(join_code: str):
+    # join_code is pre-filled by JavaScript reading window.location.pathname
+    return FileResponse(_PLAYER_HTML, media_type="text/html")
 
 # Real-Time WebSocket endpoint for Players
 @app.websocket("/ws/play/{quiz_id}/{participant_id}")

@@ -26,8 +26,15 @@ const screens = {
 
 // Check for existing session token in localStorage with validation
 window.addEventListener('DOMContentLoaded', () => {
+    const pathMatch = window.location.pathname.match(/\/join\/([^\/]+)/i);
+    const pathCode = pathMatch ? decodeURIComponent(pathMatch[1]).trim().toUpperCase() : "";
     const inputCodeElem = document.getElementById('input-code');
-    const urlJoinCode = inputCodeElem ? inputCodeElem.value.trim().toUpperCase() : "";
+    if (pathCode && inputCodeElem) {
+        inputCodeElem.value = pathCode;
+        const infoCodeElem = document.getElementById('info-quiz-code');
+        if (infoCodeElem) infoCodeElem.innerText = pathCode;
+    }
+    const urlJoinCode = pathCode || (inputCodeElem ? inputCodeElem.value.trim().toUpperCase() : "");
 
     const savedToken = localStorage.getItem('qa_session_token');
     const savedCode = localStorage.getItem('qa_join_code');
