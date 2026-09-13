@@ -1,0 +1,57 @@
+services:
+  # 1. FASTAPI BACKEND (WebSockets + Player Mobile App + APIs)
+  - type: web
+    name: quizarena-backend
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quizarena-db
+          property: connectionString
+      - key: ADMIN_INVITE_CODE
+        value: QUIZARENA2026
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # 2. STREAMLIT ADMIN DASHBOARD (Host Control Room)
+  - type: web
+    name: quizarena-admin
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run admin/app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: API_BASE_URL
+        fromService:
+          type: web
+          name: quizarena-backend
+          property: host
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quizarena-db
+          property: connectionString
+      - key: ADMIN_INVITE_CODE
+        value: QUIZARENA2026
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+
+databases:
+  # 3. MANAGED POSTGRESQL DATABASE (Shared Data)
+  - name: quizarena-db
+    plan: free
+    region: oregon
+    databaseName: quizarena
+    user: quizarena_user

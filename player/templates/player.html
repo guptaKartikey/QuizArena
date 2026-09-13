@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QuizArena — Player App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Floating Celebration Balloons Layer (Quiz Finished) -->
+    <div id="balloon-container" class="balloon-container" aria-hidden="true"></div>
+
+    <div id="app" class="mobile-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-container">
+                <span class="logo-icon">🏆</span>
+                <div class="logo-text">
+                    <span class="brand-title">QUIZARENA</span>
+                    <span class="brand-tagline">SCAN • BUZZ • ANSWER • WIN</span>
+                </div>
+            </div>
+            <!-- Mode & Status Badges -->
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <div id="header-mode-badge" class="header-badge hidden">CLASSIC</div>
+                <button id="btn-sound-toggle" class="btn-sound" onclick="togglePlayerSound()" title="Mute/Unmute Audio">🔊</button>
+                <button id="btn-leave-room" class="btn-leave hidden" onclick="leaveRoom()">🚪 Leave</button>
+            </div>
+            <!-- Survival Lives Container -->
+            <div id="player-lives-container" class="lives-container hidden">
+                <span class="lives-label">Lives:</span>
+                <span id="lives-display" class="lives-hearts">❤️ ❤️ ❤️</span>
+            </div>
+            <!-- Admin Announcement Popup Banner -->
+            <div id="announcement-banner" class="announcement-toast hidden">
+                📢 <span id="announcement-text">Announcement text</span>
+            </div>
+        </header>
+
+        <main class="app-content">
+
+            <!-- 1. JOIN SCREEN -->
+            <section id="screen-join" class="screen active">
+                <div class="card join-card">
+                    <h2>Join Quiz Arena</h2>
+                    
+                    <div id="quiz-info-box" class="info-box hidden">
+                        <h3 id="info-quiz-name">General Knowledge</h3>
+                        <p>Code: <strong id="info-quiz-code">{{ join_code }}</strong></p>
+                    </div>
+
+                    <form id="form-join" onsubmit="handleJoin(event)">
+                        <div class="form-group">
+                            <label for="input-code">Join Code *</label>
+                            <input type="text" id="input-code" value="{{ join_code }}" placeholder="e.g. X7K29" required maxlength="10" style="text-transform:uppercase;">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="input-name">Your Name *</label>
+                            <input type="text" id="input-name" placeholder="Enter your name" required maxlength="30">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="input-team">Team (Optional)</label>
+                            <input type="text" id="input-team" placeholder="Team A / Squad name" maxlength="30">
+                        </div>
+
+                        <div id="join-error" class="error-msg hidden"></div>
+
+                        <button type="submit" id="btn-join" class="btn btn-primary btn-block">JOIN QUIZ</button>
+                    </form>
+                    <p class="foot-note">No app required. Open directly in your browser.</p>
+                </div>
+            </section>
+
+            <!-- 2. LOBBY SCREEN -->
+            <section id="screen-lobby" class="screen">
+                <div class="card lobby-card">
+                    <div class="lobby-header">
+                        <h2 id="lobby-quiz-title">Quiz Lobby</h2>
+                        <div class="badge badge-player-count">
+                            Players Joined: <span id="lobby-count">0 / 50</span>
+                        </div>
+                    </div>
+
+                    <div class="player-list-container">
+                        <h3>Connected Players</h3>
+                        <ul id="lobby-player-list" class="player-list">
+                            <!-- Populated via JS -->
+                        </ul>
+                    </div>
+
+                    <div class="status-indicator">
+                        <div class="spinner"></div>
+                        <span>Waiting for host to start...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. QUESTION SCREEN (Normal / Speed / Team Mode) -->
+            <section id="screen-question" class="screen">
+                <div class="q-top-bar">
+                    <span id="q-counter" class="pill q-counter-pill">Question 1 / 10</span>
+                    <span id="q-timer" class="pill timer-pill">⏱️ 30s</span>
+                </div>
+
+                <div class="card q-card">
+                    <h3 id="q-text">What is the capital of France?</h3>
+                </div>
+
+                <div id="options-container" class="options-grid">
+                    <!-- Option Buttons dynamically generated -->
+                </div>
+
+                <div id="answer-status-msg" class="status-banner hidden">
+                    ✓ Answer submitted. Waiting for result...
+                </div>
+            </section>
+
+            <!-- 4. BUZZER MODE SCREEN -->
+            <section id="screen-buzzer" class="screen">
+                <div class="buzzer-header">
+                    <span class="mode-badge">FIRST-TO-BUZZ MODE</span>
+                    <p>Tap the buzzer as fast as you can!</p>
+                    <div id="buzz-timer" class="pill timer-pill">⏱️ 30s</div>
+                </div>
+
+                <div class="card q-card compact">
+                    <h4 id="buzz-q-text">Question text here...</h4>
+                </div>
+
+                <div class="buzzer-wrapper">
+                    <button id="btn-buzz" class="btn-buzz" onclick="handleBuzz()">
+                        <span class="buzz-inner">
+                            <span class="buzz-icon">🖐️</span>
+                            <span class="buzz-text">BUZZ!</span>
+                        </span>
+                    </button>
+                </div>
+
+                <div id="buzz-lock-overlay" class="buzz-lock-overlay hidden">
+                    <div class="lock-card">
+                        <span class="lock-icon">🔒</span>
+                        <h3>BUZZ LOCKED</h3>
+                        <p><strong id="buzz-winner-name">Kartik</strong> is answering...</p>
+                    </div>
+                </div>
+
+                <div id="second-chance-banner" class="status-banner second-chance-banner hidden">
+                    ⚡ Second Chance! Question passed to you!
+                </div>
+
+                <div class="buzz-feed">
+                    <h4>Recent Buzzes</h4>
+                    <ul id="buzz-feed-list"></ul>
+                </div>
+            </section>
+
+            <!-- 5. ANSWER RESULT SCREEN -->
+            <section id="screen-result" class="screen">
+                <div class="card result-card">
+                    <div id="result-icon-wrapper" class="icon-circle correct">
+                        <span id="result-icon">✓</span>
+                    </div>
+                    
+                    <h2 id="result-title">Correct!</h2>
+                    <p id="result-user-ans">Your answer: B. Paris</p>
+                    <div id="result-score-badge" class="points-badge">+10 points</div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-num color-correct" id="stat-correct">0</span>
+                            <span class="stat-lbl">Correct</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-num color-wrong" id="stat-wrong">0</span>
+                            <span class="stat-lbl">Wrong</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-num color-noans" id="stat-noans">0</span>
+                            <span class="stat-lbl">No Answer</span>
+                        </div>
+                    </div>
+
+                    <div id="fastest-callout" class="fastest-callout hidden">
+                        ⚡ Fastest: <strong id="fastest-name">N/A</strong>
+                    </div>
+
+                    <div id="explanation-box" class="explanation-box hidden">
+                        <strong>Explanation:</strong>
+                        <p id="explanation-text"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. LEADERBOARD SCREEN -->
+            <section id="screen-leaderboard" class="screen">
+                <div class="card leaderboard-card">
+                    <h2 class="lb-title">🏆 Live Leaderboard</h2>
+                    
+                    <!-- Team Leaderboard container if active -->
+                    <div id="team-lb-container" class="team-lb-container hidden">
+                        <h3>👥 Team Standings</h3>
+                        <ul id="team-leaderboard-list" class="lb-list"></ul>
+                        <h3 style="margin-top:16px;">👤 Individual Top 10</h3>
+                    </div>
+
+                    <ul id="leaderboard-list" class="lb-list">
+                        <!-- Populated by JS -->
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 7. ELIMINATED SCREEN (Survival / Knockout) -->
+            <section id="screen-eliminated" class="screen">
+                <div class="card eliminated-card">
+                    <span class="skull-icon">☠️</span>
+                    <h2>YOU ARE ELIMINATED</h2>
+                    <p id="eliminated-msg">You have lost all your lives in Survival Mode.</p>
+                    <p class="foot-note">You can still spectate the live leaderboard!</p>
+                </div>
+            </section>
+
+            <!-- 8. PAUSED SCREEN -->
+            <section id="screen-paused" class="screen">
+                <div class="card paused-card">
+                    <span class="pause-icon">⏸️</span>
+                    <h2>QUIZ PAUSED</h2>
+                    <p>Please wait for the host to resume...</p>
+                </div>
+            </section>
+
+            <!-- 9. FINISHED SCREEN -->
+            <section id="screen-finished" class="screen">
+                <div class="card finished-card">
+                    <span class="winner-trophy">🎉🏆</span>
+                    <h2>QUIZ COMPLETED</h2>
+                    <div id="winner-banner" class="winner-banner">
+                        <p>Winner</p>
+                        <h3 id="winner-name">Kartik</h3>
+                    </div>
+
+                    <h3>Final Standings</h3>
+                    <ul id="final-leaderboard-list" class="lb-list"></ul>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer style="text-align:center; padding:20px 10px 14px; margin-top:auto; opacity:0.65;">
+            <p style="font-family:'Outfit',sans-serif; font-size:0.82rem; font-weight:600; color:#94A3B8; letter-spacing:0.5px; margin:0;">
+                Made By <span style="color:#3B82F6; font-weight:700;">KARTIKEY GUPTA</span>
+            </p>
+            <p style="font-family:'Inter',sans-serif; font-size:0.72rem; font-weight:500; color:#64748B; margin:6px 0 0 0; letter-spacing:0.3px;">
+                Thank You For Participating in a Quiz
+            </p>
+        </footer>
+    </div>
+
+    <script src="/static/sound_engine.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>
