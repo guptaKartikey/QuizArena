@@ -121,7 +121,9 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if not st.session_state["authenticated"]:
-    api_url = os.getenv("API_BASE_URL", "http://localhost:8000")
+    api_url = os.getenv("API_BASE_URL", "http://localhost:8000").strip().rstrip("/")
+    if not api_url.startswith("http://") and not api_url.startswith("https://"):
+        api_url = "https://" + api_url
     render_login_page(api_url)
     st.stop()
 

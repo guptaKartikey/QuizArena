@@ -10,7 +10,9 @@ from services.participant_service import generate_demo_participants
 from services.network_utils import get_local_ip
 import os
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").strip().rstrip("/")
+if not API_BASE_URL.startswith("http://") and not API_BASE_URL.startswith("https://"):
+    API_BASE_URL = "https://" + API_BASE_URL
 
 def render_active_quiz():
     st.title("Active Quiz Live Control Dashboard")

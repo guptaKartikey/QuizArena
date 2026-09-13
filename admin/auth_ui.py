@@ -295,19 +295,37 @@ def render_login_page(api_base_url: str):
                 if not login_user or not login_pass:
                     st.error("Please enter both username and password.")
                 else:
+                    success = False
+                    # 1. Direct DB authentication
                     try:
-                        res = requests.post(
-                            f"{api_base_url}/api/admin/login",
-                            json={"email": login_user.strip(), "password": login_pass}
-                        )
-                        if res.status_code == 200 and res.json().get("success"):
-                            st.session_state["authenticated"] = True
-                            st.session_state["admin_user"] = login_user.strip()
-                            st.rerun()
-                        else:
-                            st.error("❌ Invalid username or password.")
+                        from backend.auth import authenticate_admin
+                        if authenticate_admin(login_user.strip(), login_pass):
+                            success = True
                     except Exception:
-                        st.error("Login failed. Please check your connection to the server.")
+                        pass
+                    
+                    # 2. HTTP API fallback
+                    if not success:
+                        try:
+                            clean_url = api_base_url.strip().rstrip("/")
+                            if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+                                clean_url = "https://" + clean_url
+                            res = requests.post(
+                                f"{clean_url}/api/admin/login",
+                                json={"email": login_user.strip(), "password": login_pass},
+                                timeout=5
+                            )
+                            if res.status_code == 200 and res.json().get("success"):
+                                success = True
+                        except Exception:
+                            pass
+
+                    if success:
+                        st.session_state["authenticated"] = True
+                        st.session_state["admin_user"] = login_user.strip()
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid username or password.")
 
     # ════════════════════════════════════════
     # TAB 2: ADMIN SIGN UP
@@ -357,20 +375,47 @@ def render_login_page(api_base_url: str):
                 elif signup_pass != signup_confirm:
                     st.error("Passwords do not match.")
                 else:
+                    success = False
+                    err_msg = "Sign up failed."
+                    # 1. Direct DB registration
                     try:
-                        res = requests.post(f"{api_base_url}/api/admin/signup", json={
-                            "email": signup_email.strip(),
-                            "password": signup_pass,
-                            "invite_code": signup_invite.strip()
-                        })
-                        data = res.json()
-                        if res.status_code == 200 and data.get("success"):
-                            st.success("✅ Account created successfully! Please switch to Login tab.")
-                            st.balloons()
+                        from backend.auth import register_admin
+                        ok, msg = register_admin(signup_email.strip(), signup_pass, signup_invite.strip())
+                        if ok:
+                            success = True
                         else:
-                            st.error(data.get("message", "Sign up failed."))
-                    except Exception:
-                        st.error("Sign up failed. Please check connection.")
+                            err_msg = msg
+                    except Exception as ex:
+                        err_msg = str(ex)
+
+                    # 2. HTTP API fallback if direct failed
+                    if not success and "Invalid invite code" not in err_msg and "already exists" not in err_msg:
+                        try:
+                            clean_url = api_base_url.strip().rstrip("/")
+                            if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+                                clean_url = "https://" + clean_url
+                            res = requests.post(
+                                f"{clean_url}/api/admin/signup",
+                                json={
+                                    "email": signup_email.strip(),
+                                    "password": signup_pass,
+                                    "invite_code": signup_invite.strip()
+                                },
+                                timeout=5
+                            )
+                            data = res.json()
+                            if res.status_code == 200 and data.get("success"):
+                                success = True
+                            else:
+                                err_msg = data.get("message", err_msg)
+                        except Exception:
+                            pass
+
+                    if success:
+                        st.success("✅ Account created successfully! Please switch to Login tab.")
+                        st.balloons()
+                    else:
+                        st.error(f"❌ {err_msg}")
 
     # ── Page Footer ──
     st.markdown("""
