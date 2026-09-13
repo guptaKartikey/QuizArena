@@ -40,7 +40,7 @@ def render_live_screen():
         quiz = get_quiz_by_id(db, quiz_id)
 
         detected_ip_base = get_local_ip()
-        if "custom_base_url" not in st.session_state or not st.session_state["custom_base_url"]:
+        if "custom_base_url" not in st.session_state or not st.session_state["custom_base_url"] or ("10." in st.session_state.get("custom_base_url", "") and detected_ip_base.startswith("https://")):
             st.session_state["custom_base_url"] = detected_ip_base
 
         join_url = f"{st.session_state['custom_base_url']}/join/{quiz.join_code}"
