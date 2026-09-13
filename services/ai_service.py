@@ -2,7 +2,7 @@ import os
 import json
 import httpx
 
-GROK_API_KEY = os.getenv("GROK_API_KEY", os.getenv("GROQ_API_KEY", ""))
+GROK_API_KEY = os.getenv("GROK_API_KEY", os.getenv("GROQ_API_KEY", os.getenv("GEMINI_API_KEY", "")))
 
 def generate_questions_with_ai(topic: str, count: int = 5, api_key: str = None) -> list:
     """
