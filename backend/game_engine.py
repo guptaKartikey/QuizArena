@@ -506,8 +506,9 @@ class GameEngine:
             total_participants = len(get_quiz_participants(db, quiz_id))
             no_answer_count = max(0, total_participants - len(answers))
 
-            fastest_ans = min(answers, key=lambda a: a.response_time) if answers else None
-            fastest_name = fastest_ans.participant.name if fastest_ans else "N/A"
+            correct_answers = [a for a in answers if a.is_correct]
+            fastest_ans = min(correct_answers, key=lambda a: a.response_time) if correct_answers else (min(answers, key=lambda a: a.response_time) if answers else None)
+            fastest_name = fastest_ans.participant.name if (fastest_ans and fastest_ans.participant) else "N/A"
             fastest_time = fastest_ans.response_time if fastest_ans else 0.0
 
             result_data = {
@@ -519,7 +520,7 @@ class GameEngine:
                     "correct": correct_count,
                     "wrong": wrong_count,
                     "no_answer": no_answer_count,
-                    "fastest": f"{fastest_name} ({fastest_time}s)" if fastest_ans else "None"
+                    "fastest": f"{fastest_name} ({fastest_time}s)" if (fastest_ans and fastest_name != "N/A") else "None"
                 }
             }
 
@@ -633,7 +634,13 @@ class GameEngine:
             
             questions = get_quiz_questions(db, quiz_id)
             room.questions = questions
-            current_q = questions[room.current_question_index] if (questions and room.current_question_index < len(questions)) else None
+            if questions:
+                if room.current_question_index < len(questions):
+                    current_q = questions[room.current_question_index]
+                else:
+                    current_q = questions[-1]
+            else:
+                current_q = None
 
             # Current question responses
             answers = []

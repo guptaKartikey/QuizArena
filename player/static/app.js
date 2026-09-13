@@ -11,6 +11,7 @@ let currentMode = "CLASSIC";
 let currentLives = 3;
 let allowAnswerChange = true;
 let currentQuestionId = null;
+let lastSubmittedPoints = null;
 
 // DOM Elements
 const screens = {
@@ -254,6 +255,7 @@ function handleServerEvent(data) {
             currentQuestionId = qId;
             hasAnswered = false;
             selectedOption = null;
+            lastSubmittedPoints = null;
             const statusMsg = document.getElementById('answer-status-msg');
             if (statusMsg) statusMsg.classList.add('hidden');
             const lockOverlay = document.getElementById('buzz-lock-overlay');
@@ -492,7 +494,7 @@ async function selectOption(letter, btnElement) {
         }));
     } else {
         try {
-            await fetch('/api/player/submit_answer', {
+            const res = await fetch('/api/player/submit_answer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -501,6 +503,10 @@ async function selectOption(letter, btnElement) {
                     selected_option: letter
                 })
             });
+            const d = await res.json();
+            if (d && d.points !== undefined) {
+                lastSubmittedPoints = d.points;
+            }
         } catch(e) {
             console.error("REST submit error:", e);
         }
@@ -531,13 +537,14 @@ async function handleBuzz() {
 }
 
 function renderResult(data) {
-    const stats = data.stats;
+    const stats = data.stats || {};
     const isUserCorrect = (data.correct_answer === selectedOption);
 
     const iconWrapper = document.getElementById('result-icon-wrapper');
     const icon = document.getElementById('result-icon');
     const title = document.getElementById('result-title');
     const userAns = document.getElementById('result-user-ans');
+    const scoreBadge = document.getElementById('result-score-badge');
 
     if (selectedOption) {
         if (isUserCorrect) {
@@ -551,25 +558,44 @@ function renderResult(data) {
             title.innerText = 'Incorrect';
             userAns.innerText = `Your answer: ${selectedOption} (Correct: ${data.correct_answer})`;
         }
+        if (scoreBadge) {
+            if (lastSubmittedPoints !== null && lastSubmittedPoints !== undefined) {
+                scoreBadge.innerText = lastSubmittedPoints > 0 ? `+${lastSubmittedPoints} points` : `${lastSubmittedPoints} points`;
+            } else {
+                scoreBadge.innerText = isUserCorrect ? "+10 points" : "0 points";
+            }
+            scoreBadge.classList.remove('hidden');
+        }
     } else {
         iconWrapper.className = 'icon-circle wrong';
         icon.innerText = '⏱️';
         title.innerText = 'Time Up!';
         userAns.innerText = `Correct Answer: ${data.correct_answer}`;
+        if (scoreBadge) {
+            scoreBadge.innerText = "0 points";
+            scoreBadge.classList.remove('hidden');
+        }
     }
 
-    document.getElementById('stat-correct').innerText = stats.correct;
-    document.getElementById('stat-wrong').innerText = stats.wrong;
-    document.getElementById('stat-noans').innerText = stats.no_answer;
+    document.getElementById('stat-correct').innerText = stats.correct || 0;
+    document.getElementById('stat-wrong').innerText = stats.wrong || 0;
+    document.getElementById('stat-noans').innerText = stats.no_answer || 0;
 
-    if (stats.fastest && stats.fastest !== "None") {
-        document.getElementById('fastest-name').innerText = stats.fastest;
-        document.getElementById('fastest-callout').classList.remove('hidden');
+    const fastestCallout = document.getElementById('fastest-callout');
+    if (fastestCallout) {
+        if (stats.fastest && stats.fastest !== "None" && stats.fastest !== "N/A") {
+            document.getElementById('fastest-name').innerText = stats.fastest;
+            fastestCallout.classList.remove('hidden');
+        } else {
+            fastestCallout.classList.add('hidden');
+        }
     }
 
     if (data.explanation) {
         document.getElementById('explanation-text').innerText = data.explanation;
         document.getElementById('explanation-box').classList.remove('hidden');
+    } else {
+        document.getElementById('explanation-box').classList.add('hidden');
     }
 }
 
